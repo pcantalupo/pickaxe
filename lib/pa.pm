@@ -30,6 +30,7 @@ sub new {
   my $self = \%args;
   bless $self, $class;
   
+  # Load config file
   $self->_load_config;
 
   if ($self->{params}{'s'}) {
@@ -37,12 +38,14 @@ sub new {
   }
   $self->{program} = $self->{params}{program};
   $self->{params}{email}    //= "";
-  
-  my $bt2dir = "";
-  if (exists $ENV{'BOWTIE2_INDEXES'}) {  $bt2dir = $ENV{'BOWTIE2_INDEXES'} . '/';  }
-  $self->{params}{virusindex} //= $bt2dir . "viral.1.1.genomic";
-  $self->{params}{virusfasta} //= $bt2dir . "viral.1.1.genomic.fna";
 
+  $self->{test}   = $self->{params}{test}   || 0;
+  $self->{force}  = $self->{params}{force}  || 0;
+  
+  $self->{wd}     = getcwd;
+
+  
+  
   # Jobs directory
   $self->{params}{jobsdir} //= $JOBSDIR;  
   if ( ! -e $self->jobsdir ) {
@@ -75,24 +78,40 @@ sub new {
     #if ( $self->{params}{virusindex} eq "") {
     #  croak "Virusindex not provided.\nEither use option '--virusindex BOWTIE2INDEX' or specify in pickaxe.config configuration file\n\n";
     #}
-    my $vi = $self->{params}{virusindex};
-    my $indxfile  = $vi . ".1.bt2";
-    my $indxfileL = $vi . ".1.bt2l";  # large bowtie2 index
-    if (   ! -e $indxfile
-        && ! -e $bt2dir . $indxfile
-        && ! -e $indxfileL
-        && ! -e $bt2dir . $indxfileL) {
-        croak "Bowtie2 index '$vi' was not found\nEither use option '--virusindex BOWTIE2INDEX' or specify in pickaxe.config configuration file\n\n";
-    }
 
-    # virus refseqs
-    if (exists $self->{params}{collate} && ( $self->{params}{collate} eq 'both' || $self->{params}{collate} eq 'virus')  ) {
-      if ( ! exists $self->{params}{virusfasta} || ! -e $self->{params}{virusfasta} ) {
-        my $vf = $self->{params}{virusfasta};
-        croak "Virusfasta '$vf' was not found\nPlease specify a virus fasta sequence file with '--virusfasta VIRUSFASTA' or specify in pickaxe.config configuration file\n\n";
+    if (exists $self->{params}{extendcontigs} || exists $self->{params}{collate}) {
+      print "Not checking for valid Bowtie2 index for virusindex since running extendedcontigs or collate\n" if ($self->debug);
+    }
+    else {
+      print "Running aaslurm.job so need to check for Bowtie2 index for virusindex\n" if ($self->debug);
+
+      my $bt2dir = "";
+      if (exists $ENV{'BOWTIE2_INDEXES'}) {  $bt2dir = $ENV{'BOWTIE2_INDEXES'} . '/';  }
+      $self->{params}{virusindex} //= $bt2dir . "viral.1.1.genomic";
+      my $vi = $self->{params}{virusindex};
+      
+      
+      print "Before: virusindex is $vi\n" if ($self->debug);
+      if ($vi =~ /^\//) {    # the virus index is a full path already
+        print "   no action since full path already\n" if ($self->debug);
+      }
+      else {
+        $vi = $self->{wd} . "/" . $vi;
+        print "   adding working directory path to virusindex\n" if ($self->debug);
+      
+      }
+      print "After: virusindex is $vi\n" if ($self->debug);
+
+      $self->{params}{virusindex} = $vi;
+      
+      my $indxfile  = $vi . ".1.bt2";
+      print "indxfile is $indxfile\n" if ($self->debug);
+      my $indxfileL = $vi . ".1.bt2l";  # large bowtie2 index
+      if ( ! -e $indxfile && ! -e $indxfileL ) {
+        croak "Bowtie2 index '$vi' was not found\nEither use option '--virusindex BOWTIE2INDEX' or specify in pickaxe.config configuration file\n\n";
       }
     }
-
+    
     # assembler
     $self->{params}{assembler} //= $ASSEMBLER;
     my $assem = $self->{params}{assembler};
@@ -114,10 +133,6 @@ sub new {
   else {
     croak "\n$self->{program} is unsupported\n";
   }
-
-  $self->{wd}     = getcwd;
-  $self->{test}   = $self->{params}{test}   || 0;
-  $self->{force}  = $self->{params}{force}  || 0;
 
   $self->aids;
 
@@ -144,6 +159,17 @@ sub AUTOLOAD {
 
 sub collate() {
   my ($self) = @_;
+
+  ###############
+  # TO BE DONE
+  # $self->{params}{virusfasta} //= $bt2dir . "viral.1.1.genomic.fna";
+  # virus refseqs
+  if ( ! exists $self->{params}{virusfasta} || ! -e $self->{params}{virusfasta} ) {
+    my $vf = $self->{params}{virusfasta};
+    croak "Virusfasta '$vf' was not found\nPlease specify a virus fasta sequence file with '--virusfasta VIRUSFASTA' or specify in pickaxe.config configuration file\n\n";
+  }
+  ##############
+
 
   my $outfile = $self->{params}{collatefile};
   if ( !-e $outfile || (-e $outfile && $self->{force}) ) {
