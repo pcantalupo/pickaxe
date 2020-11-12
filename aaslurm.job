@@ -1,0 +1,457 @@
+#!/bin/bash
+#SBATCH --mail-type=END
+#SBATCH --mail-user=__EMAIL__
+#SBATCH --time=__WALLTIME__
+#SBATCH -N 1  # Ensure all cores are on one machine
+#SBATCH -c __CPUS__
+#SBATCH --output=__NAME__.slurm.out
+#SBATCH --job-name=__NAME__
+# #  #SBATCH --mem=__MEM__g
+
+#set -eu
+set -o pipefail
+
+module purge
+module load cutadapt/1.18
+module load prinseq/0.20.4
+module load bowtie2/2.3.3
+# Other modules are loaded when needed because there were conflicts with modules
+
+# get software versions
+SVFILE="software_versions.tsv"
+rm -f $SVFILE
+bowtie2 --version | perl -ne 'if (/version (\S+)/) { print "bowtie2\t$1\n"; exit 0 }' >> $SVFILE
+echo -e "cutadapt\t"$(cutadapt --version) >> $SVFILE
+prinseq-lite.pl -version | tr ' ' '\t' >> $SVFILE
+RepeatMasker -v | cut -f 1,3 -d ' ' | tr ' ' '\t' >> $SVFILE
+samtools --version | head -n1 | tr ' ' '\t' >> $SVFILE
+
+
+# VARIABLES
+AID=__AID__
+AIDTYPE=__AIDTYPE__
+THREADS=__CPUS__
+BTHREADS=$((THREADS*2))
+ASSEMBLY=assembly
+ASSEMBLER=__ASSEMBLER__          #  supported assemblers: clc_assembler, megahit
+SEQLENGTH=500
+ANNOTCONF=__ANNOTATERCONF__
+OK=__OKFILE__
+NEGREFLIST=__NEGREFLIST__
+TEMP_SAM=bowtie.sam
+UNMAPPED_FQ=unmapped.fq
+ADAPTERSET=__ADAPTERSET__
+ADAPTEROPTIONS=__ADAPTEROPTIONS__
+EXITSUBX=__EXITSUBX__
+EXITASSEMBLY=__EXITASSEMBLY__
+EXITRM=__EXITRM__
+EXITENT=__EXITENT__
+TRIM_LEFT=__TRIMLEFT__
+TRIM_RIGHT=__TRIMRIGHT__
+SKIPMESSAGE="Skipping step since it has already been performed"
+OKFILEDIR="okfiles/"
+
+echo -e "\nPipeline starting: $(date)" && s=$(date +%s)
+echo SLURM_JOBID: $SLURM_JOBID
+mkdir -p $OKFILEDIR
+
+##################################################################################################
+# FUNCTIONS
+
+# function to report success or failure of job step
+function status_report () {
+    if [[ $1 != 0 ]] ; then
+	echo "ERROR: Step $2 failed with error code $1"
+	exit $1
+    fi
+}
+
+# function to report the date for each job step
+function date_report () {
+    echo -en "\nStep $1 $2 [starting: $(date) "
+    now=$(date +%s)
+    printf "(%s sec)]\n" $(echo $((now-s)))
+}
+
+# function to for normal exit
+function exitOK {
+    touch ${OK}
+    echo -e "\nPipeline end: $(date)" && e=$(date +%s)
+    echo Pipelinetime:$((e-s))
+    echo Pipeline ended with message: $1
+    exit;
+}
+
+
+##################################################################################################
+# MAIN CODE
+
+# Check if any work needs done
+if [[ -e ${OK} ]]; then
+    echo $OK exists therefore no work needs done...exiting.
+    exit;
+fi
+
+# Step - obtain BAM file or skip step if input is fastq or a local BAM file
+STEP_NUM=0
+STEP="downloading_data"
+STEP_OKFILE="$OKFILEDIR""$STEP_NUM"_"$STEP".OK
+date_report "$STEP_NUM" "Downloading data"
+if [[ ! -e "$STEP_OKFILE" ]]; then
+    if [[ $AIDTYPE = bam ]]; then
+        echo "Doing nothing for this step since input is BAM"
+    elif [[ $AIDTYPE = srr ]]; then
+        echo "Downloading SRR fastq with fastq-dump"
+        module load sra-toolkit/2.9.2
+        fastq-dump --split-3 "$AID"        
+    elif [[ $AIDTYPE = fastq ]]; then
+        echo "Doing nothing for this step since input is Fastq"
+    else
+        echo "AID is not a supported input"
+    fi
+else
+    echo $SKIPMESSAGE    
+fi
+status_report "$?" "$STEP_NUM"
+touch "$STEP_OKFILE"
+
+# Step - extract unmapped reads from BAM file
+STEP_NUM=$((STEP_NUM+1))
+STEP="extract_unmapped_reads"
+STEP_OKFILE="$OKFILEDIR""$STEP_NUM"_"$STEP".OK
+date_report "$STEP_NUM" "Getting unmapped reads"
+TEMP_OUT=temp.fastq
+if [[ ! -e "$STEP_OKFILE" ]]; then
+if [[ $AIDTYPE = fastq || $AIDTYPE = srr ]]; then
+    echo "Concatenating fastq files"
+    # Treat the fastq seqs as the "unmapped_reads". Concatenate fastq files into $TEMP_OUT.
+    FQFILES=("$AID"*)
+    SUFFIX="${FQFILES[0]##*.}"
+    for f in "${FQFILES[@]}"; do
+    	case "$SUFFIX" in
+    	bz2) bzip2 -dc "$f" >> "$TEMP_OUT"
+    	     echo "bzip2 -dc $f"
+    	     ;;
+    	gz)  gunzip -c "$f" >> "$TEMP_OUT"
+    	     echo "gunzip -c $f"
+    	     ;;
+    	*)   cat "$f" >> "$TEMP_OUT"
+    	     echo "cat $f"
+    	     ;;
+    	esac
+    done
+else
+    echo "samtools view | sam2fq"
+    if [[ ${AID##*.} = bam ]]; then
+        TEMP_IN=${AID}
+    elif [[ $AIDTYPE = srr ]]; then
+        TEMP_IN=$AID.bam
+    else
+      for file in $(ls ${AID}/*bam*); do
+        suffix=${file##*.}
+        if [[ ${suffix} = bam || ${suffix} = bam_HOLD_QC_PENDING ]]; then
+          TEMP_IN=$file
+          break
+        fi
+      done
+    fi
+    samtools view "$TEMP_IN" | sam2fq.pl -f 4 -n "$NEGREFLIST" > "$TEMP_OUT"
+fi
+else
+    echo "$SKIPMESSAGE"
+fi
+status_report ${?} ${STEP_NUM}
+touch "$STEP_OKFILE"
+
+# Step - samtools flagstat stats
+STEP_NUM=$((STEP_NUM+1))
+STEP="samtools_stats"
+STEP_OKFILE="$OKFILEDIR""$STEP_NUM"_"$STEP".OK
+date_report ${STEP_NUM} "Samtools flagstat stats (skipped for fastq input)"
+if [[ ! -e "$STEP_OKFILE" ]]; then
+if [[ $AIDTYPE = aid || $AIDTYPE = bam ]]; then
+    samtools flagstat "$TEMP_IN"
+    if [[ $AIDTYPE == "aid" || $AIDTYPE = srr ]]; then
+        rm -rf "$AID" "$AID".gto "$TEMP_IN"
+    fi
+fi
+else
+    echo "$SKIPMESSAGE"
+fi
+status_report ${?} ${STEP_NUM}
+touch "$STEP_OKFILE"
+
+# Step - preprocess fastq
+STEP_NUM=$((STEP_NUM+1))
+STEP="preprocess_fastq"
+STEP_OKFILE="$OKFILEDIR""$STEP_NUM"_"$STEP".OK
+date_report ${STEP_NUM} "Preprocessing - cutadapt and prinseq"
+TEMP_IN="$TEMP_OUT"  # temp.fastq
+TEMP_OUT="${TEMP_IN%.*}".preprocessed.fastq  # temp.preprocessed.fastq
+if [[ ! -e "$STEP_OKFILE" ]]; then
+# hardcoding defaults QUALITYCUTOFF = 15; ENTROPYCUTOFF = 60; and LENGTHCUTOFF = 30
+preprocessing_parallel.sh "$TEMP_IN" "$ADAPTERSET" 15 60 30 "$THREADS" "$TRIM_LEFT" "$TRIM_RIGHT" "$ADAPTEROPTIONS" > preprocess.log 2>&1
+if [[ ! -s $TEMP_OUT ]]; then
+    exitOK "no quality sequences found"
+fi
+else
+    echo "$SKIPMESSAGE"
+fi
+status_report ${?} ${STEP_NUM}
+rm -f "$TEMP_IN"
+touch "$STEP_OKFILE"
+
+# Step - SUBTRACTION
+STEP_NUM=$((STEP_NUM+1))
+STEP="subx_pipeline"
+STEP_OKFILE="$OKFILEDIR""$STEP_NUM"_"$STEP".OK
+date_report ${STEP_NUM} "Subtraction pipeline"
+TEMP_IN="$TEMP_OUT"
+if [[ ! -e "$STEP_OKFILE" ]]; then
+subxpipeline.pl -f $TEMP_IN -t $THREADS -d __SUBTRACTION__ 
+status_report ${?} ${STEP_NUM}
+if [[ ! -s "$UNMAPPED_FQ" ]]; then
+    exitOK "no unmapped reads after subtraction pipeline"
+fi
+
+if [[ $EXITSUBX == 1 ]]; then
+    gzip -f "$UNMAPPED_FQ"
+    touch "$STEP_OKFILE"
+    exitOK "exiting after subtraction step"
+fi
+else
+    echo "$SKIPMESSAGE"
+fi
+touch "$STEP_OKFILE"
+
+# Step - Map to VRS
+STEP_NUM=$((STEP_NUM+1))
+STEP="mapping_to_reference_sequences"
+STEP_OKFILE="$OKFILEDIR""$STEP_NUM"_"$STEP".OK
+date_report ${STEP_NUM} "VRS mapping"
+if [[ ! -e "$STEP_OKFILE" ]]; then
+    if [[ -e $UNMAPPED_FQ ]]; then
+        bowtie2 --no-unal -p $THREADS -x __VIRUSINDEX__ -U $UNMAPPED_FQ | samtools view -b -S - | samtools sort - kv.vrs.hg19
+    elif [[ -e "$UNMAPPED_FQ.gz" ]]; then
+        echo "Found unmapped reads as $UNMAPPED_FQ.gz...gunzipping file"
+        gunzip "$UNMAPPED_FQ.gz"
+        bowtie2 --no-unal -p $THREADS -x __VIRUSINDEX__ -U $UNMAPPED_FQ | samtools view -b -S - | samtools sort - kv.vrs.hg19
+    else
+        echo "No unmapped reads found either as $UNMAPPED_FQ or $UNMAPPED_FQ.gz...exiting"
+        exit 102
+    fi
+else
+    echo "$SKIPMESSAGE"
+fi
+status_report ${?} ${STEP_NUM}
+touch "$STEP_OKFILE"
+
+# Step - assemble reads
+STEP_NUM=$((STEP_NUM+1))
+STEP="assembling_reads"
+STEP_OKFILE="$OKFILEDIR""$STEP_NUM"_"$STEP".OK
+date_report ${STEP_NUM} "Assembling reads"
+TEMP_IN=${UNMAPPED_FQ}
+TEMP_OUT=${ASSEMBLY}.fa
+if [[ ! -e "$STEP_OKFILE" ]]; then
+    if [[ ! -e "$TEMP_IN" ]]; then
+        if [[ -e "$TEMP_IN".gz ]]; then
+            gunzip "$TEMP_IN".gz
+        else
+            echo "$TEMP_IN is missing. $TEMP_IN.gz could not be found either. Maybe it was manually deleted. Please make sure a file called $TEMP_IN (containing unmapped reads for assembly) exists in the Pickaxe output folder. Exiting now."
+            exit 100
+        fi
+    fi
+    
+    if [[ $ASSEMBLER == "clc_assembler" ]]; then
+#    if hash clc_assembler 2>/dev/null; then
+        module load clc-assembly-cell/5.1.1
+        clc_assembler | perl -ne 'if (/Version: (\S+)/) { print "clc_assembler\t$1\n" }' >> $SVFILE
+        echo "Running clc_assembler "$(clc_assembler | grep Version)
+        clc_assembler -q ${TEMP_IN} -o ${TEMP_OUT} --cpus ${THREADS}
+        status_report ${?} clc_assembler
+        if [[ ! -s ${TEMP_OUT} ]]; then
+            gzip -f "$UNMAPPED_FQ"
+            exitOK "no assembled sequences were generated"
+        fi
+    elif [[ $ASSEMBLER == "megahit" ]]; then
+#    elif hash megahit 2>/dev/null; then
+        module unload cutadapt/1.18
+        module load megahit/1.2.9
+        megahit -v | tr ' ' '\t' >> $SVFILE
+        echo "Running megahit Version: "$(megahit -v)
+        megahit -r ${TEMP_IN}
+        status_report ${?} megahit
+        if [[ ! -s megahit_out/final.contigs.fa ]]; then
+            gzip -f "$UNMAPPED_FQ"
+            exitOK "no assembled sequences were generated"
+        else
+            mv -v megahit_out/final.contigs.fa $TEMP_OUT
+        fi
+        module unload megahit/1.2.9
+    else
+        echo "Supported assemblers not found"
+        exit 101
+    fi
+    ncontigs=$(grep -c '^>' "$TEMP_OUT")
+    echo Raw contigs: "$ncontigs"
+else
+    echo "$SKIPMESSAGE"
+fi
+touch "$STEP_OKFILE"
+
+
+# Step - relative abundance
+STEP_NUM=$((STEP_NUM+1))
+STEP="relative_abundance"
+STEP_OKFILE="$OKFILEDIR""$STEP_NUM"_"$STEP".OK
+date_report ${STEP_NUM} "Relative abundance"
+TEMP_IN="$TEMP_OUT"              # assembly.fa
+if [[ ! -e "$STEP_OKFILE" ]]; then
+    if [[ ! -e "$TEMP_IN" ]]; then
+        echo "$TEMP_IN is missing. It could have been removed by a previous Pickaxe run or manually deleted. Please make sure a file called $TEMP_IN exists in the Pickaxe output folder. Exiting now."
+        exit 100
+    fi
+    relabundance.pl -c "$TEMP_IN" -r "$UNMAPPED_FQ" > "$ASSEMBLY".ra.tsv
+else
+    echo "$SKIPMESSAGE"
+fi
+status_report ${?} ${STEP_NUM}
+touch "$STEP_OKFILE"
+if [[ -e "$UNMAPPED_FQ" ]]; then
+    gzip -f "$UNMAPPED_FQ"    # unmapped.fq -> unmapped.fq.gz
+fi
+# delete unnecessary files created by relabundance.pl
+rm -f "$UNMAPPED_FQ".bam *.bt2
+
+if [[ $EXITASSEMBLY == 1 ]]; then
+    exitOK "exiting after assembly and relabundance"
+fi
+
+# Step - Repeat Masker
+STEP_NUM=$((STEP_NUM+1))
+STEP="repeat_masker"
+STEP_OKFILE="$OKFILEDIR""$STEP_NUM"_"$STEP".OK
+date_report ${STEP_NUM} "Repeat Masker"
+TEMP_IN=${TEMP_OUT}              # assembly.fa
+RM_OUT=${TEMP_IN}.masked         # assembly.fa.masked
+TEMP_OUT=${TEMP_IN%%.*}.RM.fa    # assembly.RM.fa
+rm -rf RM_*     # remove old repeatmasker temporary directories
+if [[ ! -e "$STEP_OKFILE" ]]; then
+    RepeatMasker -pa ${THREADS} -xsmall ${TEMP_IN}
+    status_report ${?} RepeatMasker
+    if [[ ! -s ${RM_OUT} ]]; then   # happens when there are no masked sequences
+        mv -v "$TEMP_IN" "$TEMP_OUT"
+    else
+        mv -v ${RM_OUT} ${TEMP_OUT}
+    fi
+else
+    echo "$SKIPMESSAGE"
+fi
+status_report ${?} ${STEP_NUM}
+touch "$STEP_OKFILE"
+rm -f "$TEMP_IN"*  # removes assembly.fa, assembly.fa.alert, assembly.fa.cat, assembly.fa.out, assembly.fa.tbl
+
+if [[ $EXITRM == 1 ]]; then
+    exitOK "exiting after RepeatMaster"
+fi
+
+# Step - Repeat Sorter
+STEP_NUM=$((STEP_NUM+1))
+STEP="repeat_sorter"
+STEP_OKFILE="$OKFILEDIR""$STEP_NUM"_"$STEP".OK
+date_report ${STEP_NUM} "Repeat Sorter"
+TEMP_IN=${TEMP_OUT}             # assembly.RM.fa
+TEMP_OUT=${TEMP_IN}.good.fa     # assembly.RM.fa.good.fa
+if [[ ! -e "$STEP_OKFILE" ]]; then
+    RepeatSorter.pl -f ${TEMP_IN} -m tcga > ${TEMP_OUT}
+    if [[ ! -s ${TEMP_OUT} ]]; then
+        exitOK "no good sequences generated by Repeat Sorter"
+    fi
+else
+    echo "$SKIPMESSAGE"
+fi
+status_report ${?} ${STEP_NUM}
+touch "$STEP_OKFILE"
+# do not delete the input file to this step since they are the assembled sequences that I want to keep
+
+# Step - Getting seqs >= 500bp
+STEP_NUM=$((STEP_NUM+1))
+STEP="filter_short_contigs"
+STEP_OKFILE="$OKFILEDIR""$STEP_NUM"_"$STEP".OK
+date_report ${STEP_NUM} "Getting sequences >= ${SEQLENGTH}bp in length"
+TEMP_IN=${TEMP_OUT}                    # assembly.RM.fa.good.fa
+TEMP_OUT=${TEMP_IN}.${SEQLENGTH}bp.fa  # assembly.RM.fa.good.fa.500bp.fa
+if [[ ! -e "$STEP_OKFILE" ]]; then
+    getseqs_minlength.pl -f ${TEMP_IN} -l ${SEQLENGTH} > ${TEMP_OUT}
+    status_report ${?} getseqs_minlength.pl
+    if [[ ! -s ${TEMP_OUT} ]]; then    # TEMP_OUT is 0 bytes if there are no seqs >= 500bp
+        exitOK "no ${SEQLENGTH}bp sequences found"
+    fi
+else
+    echo "$SKIPMESSAGE"
+fi
+status_report ${?} ${STEP_NUM}
+touch "$STEP_OKFILE"
+rm -f "$TEMP_IN"
+
+# Step - Removing low entropy sequences
+STEP_NUM=$((STEP_NUM+1))
+STEP="filter_low_entropy_contigs"
+STEP_OKFILE="$OKFILEDIR""$STEP_NUM"_"$STEP".OK
+date_report ${STEP_NUM} "Removing low entropy sequences"
+TEMP_IN=${TEMP_OUT}                    # assembly.RM.fa.good.fa.500bp.fa
+TEMP_OUT=${TEMP_IN}.ent.fa             # assembly.RM.fa.good.fa.500bp.ent.fa
+if [[ ! -e "$STEP_OKFILE" ]]; then
+    entropy.pl -m 65 -f ${TEMP_IN} > ${TEMP_OUT}
+    status_report ${?} entropy.pl
+    if [[ ! -s ${TEMP_OUT} ]]; then
+        exitOK "no good entropy sequences found"
+    fi
+    echo $(grep -c '^>' "$TEMP_OUT") high entropy sequences remaining.
+else
+    echo "$SKIPMESSAGE"
+fi
+status_report ${?} ${STEP_NUM}
+touch "$STEP_OKFILE"
+rm -f ${TEMP_IN}
+
+if [[ $EXITENT == 1 ]]; then
+    exitOK "exiting after filtering Low Entropy contigs"
+fi
+
+# Step - Annotator
+module purge
+module load rapsearch/2.24
+module load blast+/2.7.1
+blastn -version | perl -ne 'if (/blastn: (\S+)/) { print "blast+\t$1\n" }' >> $SVFILE
+rapsearch 2>&1 | perl -ne 'if(/rapsearch (v\S+?):/) { print "rapsearch\t$1\n" }' >> $SVFILE
+command -v rapsearch >/dev/null 2>&1 || { echo >&2 "I require rapsearch but it's not installed.  Aborting."; exit 1; }
+STEP_NUM=$((STEP_NUM+1))
+STEP="annotater"
+STEP_OKFILE="$OKFILEDIR""$STEP_NUM"_"$STEP".OK
+date_report ${STEP_NUM} "Annotating "$(grep -c '^>' "$TEMP_OUT")" sequences"
+TEMP_IN=${TEMP_OUT}
+if [[ ! -e "$STEP_OKFILE" ]]; then
+    if [[ ! -e "$TEMP_IN" ]]; then    # check for input sequence file
+        ANN_BE_FILE="annotator/ann.wTax.BE.report.txt"
+        if [[ -e "$ANN_BE_FILE" ]]; then
+            cut -f 1,2 annotator/ann.wTax.BE.report.txt | sed 's/^/>/' | tr '\t' '\n' > "$TEMP_IN"
+        else
+            echo "The expected input sequence file, $TEMP_IN, is missing. Annotater $ANN_BE_FILE could not be found either. Please make sure a file called $TEMP_IN (containing sequences for annotation) exists in the Pickaxe output folder. Exiting now."
+            exit 100
+        fi
+    fi
+    Reann.pl -file ${TEMP_IN} -config ${ANNOTCONF} -num_threads ${THREADS} -evalue 1e-5 -tax
+else
+    echo "$SKIPMESSAGE"
+fi
+status_report ${?} ${STEP_NUM}
+touch "$STEP_OKFILE"
+cp ${ANNOTCONF} annotator
+rm -f ${TEMP_IN}
+
+
+STEP_NUM=$((STEP_NUM+1))
+date_report ${STEP_NUM} "Pickaxe finished"
+exitOK "all steps finished"
