@@ -1,10 +1,10 @@
 #!/bin/bash
-#SBATCH --mail-type=END
+#SBATCH --mail-type=FAIL
 #SBATCH --mail-user=__EMAIL__
 #SBATCH --time=__WALLTIME__
 #SBATCH -N 1  # Ensure all cores are on one machine
 #SBATCH -c __CPUS__
-#SBATCH --output=__NAME__.slurm.out
+#SBATCH --output=__OUTPUTFILE__
 #SBATCH --job-name=__NAME__
 # #  #SBATCH --mem=__MEM__g
 

@@ -1,8 +1,9 @@
 package pa;
 use strict;
 use warnings;
-use File::Path qw(make_path remove_tree);
+use File::Path qw(remove_tree);
 use File::Basename;
+use File::Copy;
 use Annotator::Report;
 use Annotator::Blast;
 use Cwd;
@@ -441,7 +442,13 @@ sub runjobs {
       open (my $rawjob, "<", $path) or die "Can't open jobfile $path for reading: $!\n";
       open (my $newjob, ">", $jobfile) or die "Can't open jobfile $jobfile for writing: $!\n";
 
-      my $jobname = "$jobfile." . $aid;
+      my $jobname = "$jobfile." . $aid;         # aaslurm.job.SRR1234      
+      my $joboutputfile = "$jobname.out";       # aaslurm.job.SRR1234.out
+      if ( -e $joboutputfile ) {
+        my $backupfile = $joboutputfile . ".1";       # Careful: this only backups the last output file
+        move($joboutputfile, $backupfile);
+      }
+      
       $self->{params}{walltime} = '48:00:00' if (!exists $self->{params}{walltime});
       $self->{params}{cpus}     = 6          if (!exists $self->{params}{cpus});
       $self->{params}{adapterset} = ""       if (!exists $self->{params}{adapterset});
@@ -452,6 +459,7 @@ sub runjobs {
         s/__WALLTIME__/$self->{params}{walltime}/;
         s/__CPUS__/$self->{params}{cpus}/;
         s/__MEM__/$self->{params}{cpus}*16/e;
+        s/__OUTPUTFILE__/$joboutputfile/;
         s/__NAME__/$jobname/;
         s/__OKFILE__/$okfile/;
         s/__AID__/$aid/;
@@ -498,11 +506,9 @@ sub runjobs {
       }
       close ($newjob) or die "Can't close jobfile $jobfile: $!\n";
 
-      my $jobid = "0000000.clusman0";
+      my $jobid = "shell";
       unless ($self->{test}) {
-        unlink $okfile, "$aid.gto";
-        remove_tree ("$aid.partial");
-        unlink <"$jobfile.*">;
+        unlink $okfile;
         
         my $command = "qsub";
         if ($self->{params}{shell}) {
@@ -516,7 +522,7 @@ sub runjobs {
           chomp ($jobid = `$command $jobfile`);
         }
         else {
-          `bash $jobfile > $jobname.out 2>&1`;
+          `bash $jobfile > $joboutputfile 2>&1`;
         }
       }
       print "\t$jobid";
