@@ -463,7 +463,6 @@ sub runjobs {
         s/__NAME__/$jobname/;
         s/__OKFILE__/$okfile/;
         s/__AID__/$aid/;
-        s/__SCRTCH__/$self->{params}{scratch}/;
         s/__AIDTYPE__/$aid_type/;
         s/__ADAPTERSET__/$self->{params}{adapterset}/;
         s/__ADAPTEROPTIONS__/$self->{params}{adapteroptions}/;
@@ -499,18 +498,17 @@ sub runjobs {
             $xparam .= " -r";
           }
           s/__SUBTRACTION__/$xparam/;
-          #$_ = $self->subtraction_pipeline;   # replace current line with subtraction pipeline
         }
         
         print $newjob $_;
       }
       close ($newjob) or die "Can't close jobfile $jobfile: $!\n";
 
-      my $jobid = "shell";
+      my $jobid = "00000";
       unless ($self->{test}) {
         unlink $okfile;
         
-        my $command = "qsub";
+        my $command = "bash";
         if ($self->{params}{shell}) {
           $command = 'bash';
         }
