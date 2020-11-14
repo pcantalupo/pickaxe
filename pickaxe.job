@@ -190,7 +190,7 @@ TEMP_IN="$TEMP_OUT"  # temp.fastq
 TEMP_OUT="${TEMP_IN%.*}".preprocessed.fastq  # temp.preprocessed.fastq
 if [[ ! -e "$STEP_OKFILE" ]]; then
 # hardcoding defaults QUALITYCUTOFF = 15; ENTROPYCUTOFF = 60; and LENGTHCUTOFF = 30
-preprocessing_parallel.sh "$TEMP_IN" "$ADAPTERSET" 15 60 30 "$THREADS" "$TRIM_LEFT" "$TRIM_RIGHT" "$ADAPTEROPTIONS" > preprocess.log 2>&1
+preprocessing_parallel.sh "$TEMP_IN" "$ADAPTERSET" 15 60 30 "$THREADS" "$TRIM_LEFT" "$TRIM_RIGHT" "$ADAPTEROPTIONS"
 if [[ ! -s $TEMP_OUT ]]; then
     exitOK "no quality sequences found"
 fi
