@@ -38,8 +38,7 @@ sub new {
     $self->{params}{shell} = 1;
   }
   $self->{params}{email}    //= "";
-
-  $self->{test}   = $self->{params}{test}   || 0;
+  $self->{params}{test}     //= 0;
   $self->{force}  = $self->{params}{force}  || 0;
   
   $self->{wd}     = getcwd;  
@@ -103,7 +102,15 @@ sub new {
       croak "Bowtie2 index '$vi' was not found\nEither use option '--virusindex BOWTIE2INDEX' or specify in pickaxe.config configuration file\n\n";
     }
   }
-    
+
+  # Virus references sequences
+  if (exists $self->{params}{collate}) {
+    print "Parsing virus reference sequences since 'collate' is in effect\n" if ($self->debug);
+    my $bt2dir = "";
+    if (exists $ENV{'BOWTIE2_INDEXES'}) {  $bt2dir = $ENV{'BOWTIE2_INDEXES'} . '/';  }
+    $self->{params}{virusfasta} //= $bt2dir . "viral.1.1.genomic.fna";  # default is viral.1.1.genomic.fna or $BOWTIE2_INDEXES/viral.1.1.genomic.fna
+  }
+   
   # assembler
   $self->{params}{assembler} //= $ASSEMBLER;
   my $assem = $self->{params}{assembler};
@@ -147,17 +154,16 @@ sub AUTOLOAD {
 
 sub collate() {
   my ($self) = @_;
-
-  ###############
-  # TO BE DONE
-  # $self->{params}{virusfasta} //= $bt2dir . "viral.1.1.genomic.fna";
-  # virus refseqs
-  if ( ! exists $self->{params}{virusfasta} || ! -e $self->{params}{virusfasta} ) {
-    my $vf = $self->{params}{virusfasta};
-    croak "Virusfasta '$vf' was not found\nPlease specify a virus fasta sequence file with '--virusfasta VIRUSFASTA' or specify in pickaxe.config configuration file\n\n";
+  
+  if ($self->test) {
+    print "Collate not run because 'test' is in effect\n" if ($self->debug);
+    return
+  };
+  
+  # Make sure virusfasta file is found
+  if ( ! -e $self->{params}{virusfasta}) {
+    croak "Virusfasta " .  $self->{params}{virusfasta} . " was not found\nPlease specify a virus fasta sequence file with '--virusfasta VIRUSFASTA' or specify in pickaxe.config configuration file\n\n";
   }
-  ##############
-
 
   my $outfile = $self->{params}{collatefile};
   if ( !-e $outfile || (-e $outfile && $self->{force}) ) {
@@ -178,6 +184,10 @@ sub collate() {
     else {
       croak ("Unknown collate method $collate_method\n");
     }
+  }
+  else {
+    print "report files exist so not overwriting...add -f argument to force\n";
+  
   }
 }
 
@@ -281,6 +291,11 @@ sub _collate_virus {
 sub extendcontigs {
   my ($self) = @_;
   
+  if ($self->test) {
+    print "Extendcontigs not run because 'test' is in effect\n" if ($self->debug);
+    return
+  };
+    
   print "Running extend contigs\n" if ($self->debug);
 
   my $blastreportfile = $self->{params}{collatefile};
@@ -479,7 +494,7 @@ sub runjobs {
       close ($newjob) or die "Can't close jobfile $jobfile: $!\n";
 
       my $jobid = "00000";
-      unless ($self->{test}) {
+      unless ($self->test) {
         unlink $okfile;
         
         my $command = "sbatch";  # default is sbatch unless --shell option is used
