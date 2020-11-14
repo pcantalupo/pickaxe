@@ -39,7 +39,6 @@ $params->{exitsubx} //= 0;
 $params->{exitassembly} //= 0;
 $params->{exitrm} //= 0;
 $params->{exitent} //= 0;
-$params->{program} //= "aaslurm";
 
 # Determine AIDs for processing
 $params->{aidfile} = "" if (!exists $params->{aidfile});

@@ -37,15 +37,12 @@ sub new {
   if ($self->{params}{'s'}) {
     $self->{params}{shell} = 1;
   }
-  $self->{program} = $self->{params}{program};
   $self->{params}{email}    //= "";
 
   $self->{test}   = $self->{params}{test}   || 0;
   $self->{force}  = $self->{params}{force}  || 0;
   
-  $self->{wd}     = getcwd;
-
-  
+  $self->{wd}     = getcwd;  
   
   # Jobs directory
   $self->{params}{jobsdir} //= $JOBSDIR;  
@@ -53,86 +50,76 @@ sub new {
     croak "Jobs directory [\"" . $self->jobsdir . "\"] does not exist. Please supply one with '--jobsdir DIR' option\n";
   }
 
-  if ($self->{program} eq 'aaslurm') {
-    $self->{params}{collatefile} //= "report_BLAST.tsv";
-    $self->{params}{summarizefile} //= "report_ViralRefSeq.tsv";
-    $self->{params}{okfile}      //= "aa.OK";
-    $self->{params}{contigs}     //= "assembly.RM.fa";
-    $self->{params}{jobfile}       = $self->{program} . ".job";
-    $self->{params}{trim_left}   //= 0;
-    $self->{params}{trim_right}  //= 0;
+  $self->{params}{collatefile} //= "report_BLAST.tsv";
+  $self->{params}{summarizefile} //= "report_ViralRefSeq.tsv";
+  $self->{params}{okfile}      //= "pickaxe.OK";
+  $self->{params}{contigs}     //= "assembly.RM.fa";
+  $self->{params}{jobfile}       = "pickaxe.job";
+  $self->{params}{trim_left}   //= 0;
+  $self->{params}{trim_right}  //= 0;
 
-    # Annotater configuration file
-    unless (exists $self->{params}{extendcontigs}) {   # skip if running extendcontigs
-      $self->{params}{annotconf} //= $ANNOTCONF;
-      if ( ! -e $self->{params}{annotconf} ) {
-        croak "Annotater configuration file '" . $self->{params}{annotconf} . "' does not exist. Please supply one with '--annotconf ANNOTCONF' option\n";
-      }      
-      
-      # Set annotconf to absolute path to the annotater configuration file so that annotater (Reann.pl) finds correct file since annotater will be executed in a different directory from working directory
-      $self->{params}{annotconf} = Cwd::realpath($self->{params}{annotconf});
-      #print "Cwd realpath for 'annotconf': ", Cwd::realpath($self->{params}{annotconf}), $/;
-      $self->{params}{annotconffile} = basename $self->{params}{annotconf};
-    }
-
-    # virusindex
-    #if ( $self->{params}{virusindex} eq "") {
-    #  croak "Virusindex not provided.\nEither use option '--virusindex BOWTIE2INDEX' or specify in pickaxe.config configuration file\n\n";
-    #}
-
-    if (exists $self->{params}{extendcontigs} || exists $self->{params}{collate}) {
-      print "Not checking for valid Bowtie2 index for virusindex since running extendedcontigs or collate\n" if ($self->debug);
-    }
-    else {
-      print "Running aaslurm.job so need to check for Bowtie2 index for virusindex\n" if ($self->debug);
-
-      my $bt2dir = "";
-      if (exists $ENV{'BOWTIE2_INDEXES'}) {  $bt2dir = $ENV{'BOWTIE2_INDEXES'} . '/';  }
-      $self->{params}{virusindex} //= $bt2dir . "viral.1.1.genomic";
-      my $vi = $self->{params}{virusindex};
-      
-      
-      print "Before: virusindex is $vi\n" if ($self->debug);
-      if ($vi =~ /^\//) {    # the virus index is a full path already
-        print "   no action since full path already\n" if ($self->debug);
-      }
-      else {
-        $vi = $self->{wd} . "/" . $vi;
-        print "   adding working directory path to virusindex\n" if ($self->debug);
-      
-      }
-      print "After: virusindex is $vi\n" if ($self->debug);
-
-      $self->{params}{virusindex} = $vi;
-      
-      my $indxfile  = $vi . ".1.bt2";
-      print "indxfile is $indxfile\n" if ($self->debug);
-      my $indxfileL = $vi . ".1.bt2l";  # large bowtie2 index
-      if ( ! -e $indxfile && ! -e $indxfileL ) {
-        croak "Bowtie2 index '$vi' was not found\nEither use option '--virusindex BOWTIE2INDEX' or specify in pickaxe.config configuration file\n\n";
-      }
-    }
+  # Annotater configuration file
+  unless (exists $self->{params}{extendcontigs}) {   # skip if running extendcontigs
+    $self->{params}{annotconf} //= $ANNOTCONF;
+    if ( ! -e $self->{params}{annotconf} ) {
+      croak "Annotater configuration file '" . $self->{params}{annotconf} . "' does not exist. Please supply one with '--annotconf ANNOTCONF' option\n";
+    }      
     
-    # assembler
-    $self->{params}{assembler} //= $ASSEMBLER;
-    my $assem = $self->{params}{assembler};
-    if ($assem ne "clc_assembler" && $assem ne "megahit") {
-      croak "Assembler '$assem' not supported. Please choose either clc_assembler or megahit\n";
-    }
+    # Set annotconf to absolute path to the annotater configuration file so that annotater (Reann.pl) finds correct file since annotater will be executed in a different directory from working directory
+    $self->{params}{annotconf} = Cwd::realpath($self->{params}{annotconf});
+    #print "Cwd realpath for 'annotconf': ", Cwd::realpath($self->{params}{annotconf}), $/;
+    $self->{params}{annotconffile} = basename $self->{params}{annotconf};
+  }
 
-    # adapter file
-    if (exists $self->{params}{adapterfile} && -e $self->{params}{adapterfile}) {
-      my $af = $self->{params}{adapterfile};
-      open (my $AF, "<", $af) or croak ("Can't open $af for reading: $!\n");
-      while (<$AF>) {
-        chomp;
-        $self->{params}{adapteroptions} = $_;
-      }
-      close ($AF);
-    }
+  # Virusindex
+  if (exists $self->{params}{extendcontigs} || exists $self->{params}{collate}) {
+    print "Not checking for valid Bowtie2 index for virusindex since running extendedcontigs or collate\n" if ($self->debug);
   }
   else {
-    croak "\n$self->{program} is unsupported\n";
+    print "Running pickaxe.job so need to check for Bowtie2 index for virusindex\n" if ($self->debug);
+
+    my $bt2dir = "";
+    if (exists $ENV{'BOWTIE2_INDEXES'}) {  $bt2dir = $ENV{'BOWTIE2_INDEXES'} . '/';  }
+    $self->{params}{virusindex} //= $bt2dir . "viral.1.1.genomic";
+    my $vi = $self->{params}{virusindex};
+    
+    print "Before: virusindex is $vi\n" if ($self->debug);
+    if ($vi =~ /^\//) {    # the virus index is a full path already
+      print "   no action since full path already\n" if ($self->debug);
+    }
+    else {
+      $vi = $self->{wd} . "/" . $vi;
+      print "   adding working directory path to virusindex\n" if ($self->debug);
+    
+    }
+    print "After: virusindex is $vi\n" if ($self->debug);
+
+    $self->{params}{virusindex} = $vi;
+    
+    my $indxfile  = $vi . ".1.bt2";
+    print "indxfile is $indxfile\n" if ($self->debug);
+    my $indxfileL = $vi . ".1.bt2l";  # large bowtie2 index
+    if ( ! -e $indxfile && ! -e $indxfileL ) {
+      croak "Bowtie2 index '$vi' was not found\nEither use option '--virusindex BOWTIE2INDEX' or specify in pickaxe.config configuration file\n\n";
+    }
+  }
+    
+  # assembler
+  $self->{params}{assembler} //= $ASSEMBLER;
+  my $assem = $self->{params}{assembler};
+  if ($assem ne "clc_assembler" && $assem ne "megahit") {
+    croak "Assembler '$assem' not supported. Please choose either clc_assembler or megahit\n";
+  }
+
+  # adapter file
+  if (exists $self->{params}{adapterfile} && -e $self->{params}{adapterfile}) {
+    my $af = $self->{params}{adapterfile};
+    open (my $AF, "<", $af) or croak ("Can't open $af for reading: $!\n");
+    while (<$AF>) {
+      chomp;
+      $self->{params}{adapteroptions} = $_;
+    }
+    close ($AF);
   }
 
   $self->aids;
@@ -176,33 +163,20 @@ sub collate() {
   if ( !-e $outfile || (-e $outfile && $self->{force}) ) {
     unlink ($outfile) or die "collate: can't remove $outfile: $!\n" if (-e $outfile);
 
-    #
-    # AA program - only collate the hits from individual report files that pass entropy cutoffs
-    #
-    if ($self->{program} =~ /^aa/ ) {    
-      my $collate_method = $self->{params}{collate};
-      if ($collate_method eq 'both') {
-        $self->_collate_blast();
-        $self->_collate_virus();
-      }
-      elsif ($collate_method eq 'blast') {
-        $self->_collate_blast();
-      }
-      elsif ($collate_method eq 'virus') {
-        $self->_collate_virus();
-      }
-      else {
-        croak ("Unknown collate method $collate_method\n");
-      }
+    # only collate the hits from individual report files that pass entropy cutoffs
+    my $collate_method = $self->{params}{collate};
+    if ($collate_method eq 'both') {
+      $self->_collate_blast();
+      $self->_collate_virus();
+    }
+    elsif ($collate_method eq 'blast') {
+      $self->_collate_blast();
+    }
+    elsif ($collate_method eq 'virus') {
+      $self->_collate_virus();
     }
     else {
-      my $g = $self->{refseqs};
-
-      foreach my $aid (sort keys %{$self->aids}) {
-        my $bampath = $aid . "/" . $self->{mapdir} . "/" . $self->{finalbam};
-        my $command = "summarizebam_by_ref.pl -a $aid -g $g -f $bampath >> $outfile";
-        `$command`;
-      }
+      croak ("Unknown collate method $collate_method\n");
     }
   }
 }
@@ -442,8 +416,8 @@ sub runjobs {
       open (my $rawjob, "<", $path) or die "Can't open jobfile $path for reading: $!\n";
       open (my $newjob, ">", $jobfile) or die "Can't open jobfile $jobfile for writing: $!\n";
 
-      my $jobname = "$jobfile." . $aid;         # aaslurm.job.SRR1234      
-      my $joboutputfile = "$jobname.out";       # aaslurm.job.SRR1234.out
+      my $jobname = "$jobfile." . $aid;         # pickaxe.job.SRR1234      
+      my $joboutputfile = "$jobname.out";       # pickaxe.job.SRR1234.out
       if ( -e $joboutputfile ) {
         my $backupfile = $joboutputfile . ".1";       # Careful: this only backups the last output file
         move($joboutputfile, $backupfile);
@@ -508,12 +482,9 @@ sub runjobs {
       unless ($self->{test}) {
         unlink $okfile;
         
-        my $command = "bash";
+        my $command = "sbatch";  # default is sbatch unless --shell option is used
         if ($self->{params}{shell}) {
           $command = 'bash';
-        }
-        elsif ($self->{program} =~ /slurm/i) {
-          $command = 'sbatch';
         }
 
         if ($command ne 'bash') {
