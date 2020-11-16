@@ -57,8 +57,8 @@ sub new {
   $self->{params}{trim_left}   //= 0;
   $self->{params}{trim_right}  //= 0;
 
-  # Annotater configuration file
-  unless (exists $self->{params}{extendcontigs}) {   # skip if running extendcontigs
+  # Annotater configuration file (needed for pickaxejob and collate)
+  unless (exists $self->{params}{extendcontigs} || exists $self->{params}{stats}) {
     $self->{params}{annotconf} //= $ANNOTCONF;
     if ( ! -e $self->{params}{annotconf} ) {
       croak "Annotater configuration file '" . $self->{params}{annotconf} . "' does not exist. Please supply one with '--annotconf ANNOTCONF' option\n";
@@ -70,9 +70,9 @@ sub new {
     $self->{params}{annotconffile} = basename $self->{params}{annotconf};
   }
 
-  # Virusindex
-  if (exists $self->{params}{extendcontigs} || exists $self->{params}{collate}) {
-    print "Not checking for valid Bowtie2 index for virusindex since running extendedcontigs or collate\n" if ($self->debug);
+  # Virusindex (needed for pickaxejob)
+  if (exists $self->{params}{extendcontigs} || exists $self->{params}{collate} || exists $self->{params}{stats}) {
+    print "Not checking for valid Bowtie2 index for virusindex since not running pickaxejob\n" if ($self->debug);
   }
   else {
     print "Running pickaxe.job so need to check for Bowtie2 index for virusindex\n" if ($self->debug);
@@ -103,7 +103,7 @@ sub new {
     }
   }
 
-  # Virus references sequences
+  # Virus references sequences (needed for collate)
   if (exists $self->{params}{collate}) {
     print "Parsing virus reference sequences since 'collate' is in effect\n" if ($self->debug);
     my $bt2dir = "";
@@ -331,7 +331,60 @@ sub extendcontigs {
 sub stats {
   my ($self) = @_;
 
-  print "Calculating stats for pickaxe runs\nTO BE FINISHED\n";
+  print "Calculating stats...\n" if ($self->debug);
+  
+  my $statsref = {};
+  foreach my $aid (sort keys %{$self->aids}) {
+    print "\t$aid\n" if ($self->debug);
+
+    my $dir = $aid;    
+    my $aidtype = $self->_aid_type($aid);
+    if ($aidtype eq 'bam' || $aidtype eq 'fastq') {
+      $dir .= $OUTDIRSUFFIX;
+    }
+
+    my $joboutputfile = "$dir/" . $self->jobfile . ".$aid.out";
+    open (my $in, "<", $joboutputfile) or die "Can't open $joboutputfile for reading: $!\n";
+    
+    my %stats = ();
+    my @stats = ();
+    while (<$in>) {
+      if (/(\d+) FASTQ reads/) {  # from Step 3 Preprocessing (num reads before preprocessing occurs)
+        push (@stats, $1);
+      }
+      elsif (/Total reads: (\d+)/) {  # from Step 4 Subtraction (num reads before subtract occurs)
+        push (@stats, $1);
+      }
+      elsif (/Unmapped reads: (\d+)/) {   # from Step 4 Subtraction (num reads after subtract)
+        $stats{nonhost} = $1;
+        push (@stats, $1); 
+      }
+      elsif (/VRS mapping/) {   # from Step 5 Viral reference database mapping (num reads mapped to references seqs)
+        my $line = <$in>;
+        $line = <$in>;
+        $line = <$in>;   # i.e. 272 (15.08%) aligned 0 times
+        $line =~ /\s+(\d+) /;
+        my $vrsmapped = $stats{nonhost} - $1;   # number nonhost reads minus those that didn't align equals the number that did align
+        push (@stats, $vrsmapped);
+      }   
+      elsif (/Raw contigs: (\d+)/) {   # from Step 6 Assembling reads (num contigs assembled)
+        push (@stats, $1);
+      }
+      elsif (/(\d+) high entropy/) {   # from Step 11 Entropy filter (num contigs remaining after entropy filter)
+        push (@stats, $1);
+      }
+    }
+    
+    $$statsref{$aid} = \@stats;
+    close ($in);
+  }
+    
+  #use Data::Dumper;
+  #print Dumper($statsref),$/; 
+  print join("\t", "Sample", "RawReads", "QCReads", "NonHostReads", "VirusReferenceMapped", "RawContigs", "QCContigs"),$/;
+  foreach my $aid (sort keys %$statsref) {
+    print join("\t", $aid, @{$statsref->{$aid}}), $/;
+  }
 }
 
 # Get/Set AIDs
