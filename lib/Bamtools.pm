@@ -5,7 +5,6 @@ use Exporter;
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw(bam2refnumaligns
-                 bamtools_stats
                  num_mapped_reads
                  get_reads_for_each_qname
                 );
@@ -24,7 +23,7 @@ sub bam2refnumaligns {
   return @result;
 }
 
-sub bamtools_stats {
+sub bamtools_stats {  # NOT EXPORTED
   my ($file) = @_;
   return `bamtools stats -in $file`;  
 }
