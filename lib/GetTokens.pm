@@ -1,38 +1,3 @@
-
-=head1 NAME
-
-
-=head1 SYNOPSIS
-
-
-=head1 EXAMPLE
-
-
-=head1 DESCRIPTION 
-
-
-=head1 TODO
-
-
-=head1 FEEDBACK
-
-
-
-=head1 BUGS
-
-  Contact Paul Cantalupo pcantalupo_at_gmail-dot-com
-  
-=head1 AUTHOR
-
-  Paul Cantalupo
-  
-=head1 VERSIONS
-
-  0.01
-
-=cut
-
-# Let the code begin
 package GetTokens;
 use strict;
 use warnings;
