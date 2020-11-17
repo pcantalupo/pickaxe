@@ -421,16 +421,19 @@ if [[ $EXITENT == 1 ]]; then
 fi
 
 # Step - Annotator
-module purge
-module load rapsearch/2.24
-module load blast+/2.7.1
-blastn -version | perl -ne 'if (/blastn: (\S+)/) { print "blast+\t$1\n" }' >> $SVFILE
-rapsearch 2>&1 | perl -ne 'if(/rapsearch (v\S+?):/) { print "rapsearch\t$1\n" }' >> $SVFILE
-command -v rapsearch >/dev/null 2>&1 || { echo >&2 "I require rapsearch but it's not installed.  Aborting."; exit 1; }
 STEP_NUM=$((STEP_NUM+1))
 STEP="annotater"
 STEP_OKFILE="$OKFILEDIR""$STEP_NUM"_"$STEP".OK
 date_report ${STEP_NUM} "Annotating "$(grep -c '^>' "$TEMP_OUT")" sequences"
+module purge
+grep -q rapsearch $ANNOTCONF   # check if rapsearch is needed
+if [[ $? -eq 0 ]]; then
+    echo "Loading module rapsearch/2.24"
+    module load rapsearch/2.24
+    rapsearch 2>&1 | perl -ne 'if(/rapsearch (v\S+?):/) { print "rapsearch\t$1\n" }' >> $SVFILE
+fi
+module load blast+/2.7.1
+blastn -version | perl -ne 'if (/blastn: (\S+)/) { print "blast+\t$1\n" }' >> $SVFILE
 TEMP_IN=${TEMP_OUT}
 if [[ ! -e "$STEP_OKFILE" ]]; then
     if [[ ! -e "$TEMP_IN" ]]; then    # check for input sequence file

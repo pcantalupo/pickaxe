@@ -175,7 +175,8 @@ Options:
                Supported assemblers are clc_assembler and megahit (default:
                clc_assembler)
 
-Dependendies
+Dependendies - listed version may not be absolutely required.  Other
+versions were not tested
 
   samtools	1.2
   bowtie2	2.3.3
@@ -184,7 +185,11 @@ Dependendies
   RepeatMasker	open-4.0.7
   clc_assembler	5.1.1.184548-201811011136 (or megahit)
   blast+	2.7.1+
+
+Optional
+
   rapsearch	v2.24
+  sra-toolkit	2.9.2
 
 
 
