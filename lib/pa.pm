@@ -66,7 +66,6 @@ sub new {
     
     # Set annotconf to absolute path to the annotater configuration file so that annotater (Reann.pl) finds correct file since annotater will be executed in a different directory from working directory
     $self->{params}{annotconf} = Cwd::realpath($self->{params}{annotconf});
-    #print "Cwd realpath for 'annotconf': ", Cwd::realpath($self->{params}{annotconf}), $/;
     $self->{params}{annotconffile} = basename $self->{params}{annotconf};
   }
 
@@ -258,11 +257,6 @@ sub _collate_blast {
 sub _collate_virus {
   my ($self) = @_;
 
-#  my $g = $self->virusfasta;
-#  if (! -e $g) {
-#    croak "Virus fasta sequence file, $g, not found\n";
-#  }
-
   print "Running collate virus\n" if ($self->debug);
 
   my $outfile = $self->{params}{summarizefile};
@@ -379,8 +373,6 @@ sub stats {
     close ($in);
   }
     
-  #use Data::Dumper;
-  #print Dumper($statsref),$/; 
   print join("\t", "Sample", "RawReads", "QCReads", "NonHostReads", "VirusReferenceMapped", "RawContigs", "QCContigs"),$/;
   foreach my $aid (sort keys %$statsref) {
     print join("\t", $aid, @{$statsref->{$aid}}), $/;

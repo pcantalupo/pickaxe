@@ -183,7 +183,7 @@ versions were not tested
   cutadapt	1.18
   PRINSEQ-lite	0.20.4
   RepeatMasker	open-4.0.7
-  clc_assembler	5.1.1.184548-201811011136 (or megahit)
+  clc_assembler	5.1.1.184548-201811011136 (or megahit 1.2.9)
   blast+	2.7.1+
 
 Optional
