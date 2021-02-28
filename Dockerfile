@@ -23,8 +23,18 @@ RUN bash /miniconda.sh -b -p miniconda
 COPY environment.yml /
 RUN conda env create --quiet -f /environment.yml && conda clean -a
 
-# Add conda installation dir to PATH (instead of doing 'conda activate')
-ENV PATH=$PATH:/miniconda/envs/pickaxe-1.0/bin:/samtools-1.2
-
 # Dump the details of the installed packages to a file for posterity
-#RUN conda env export --name nf-core-nanoseq-1.1.0 > nf-core-nanoseq-1.1.0.yml
+RUN conda env export --name pickaxe-1.0 > pickaxe-1.0.yml
+
+# Add conda installation dir to PATH (instead of doing 'conda activate')
+ENV PATH=$PATH:/miniconda/envs/pickaxe-1.0/bin:/samtools-1.2:/opt/pickaxe
+
+# Install pickaxe from github
+WORKDIR /opt
+RUN git clone https://github.com/pcantalupo/pickaxe
+ENV PERL5LIB "$PERL5LIB:/opt/pickaxe/lib"
+
+# Install BKV refseqs
+RUN git clone https://github.com/pcantalupo/bkv
+ENV BOWTIE2_INDEXES /opt/bkv/bowtie2
+
