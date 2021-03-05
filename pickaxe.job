@@ -42,6 +42,7 @@ TEMP_SAM=bowtie.sam
 UNMAPPED_FQ=unmapped.fq
 ADAPTERSET=__ADAPTERSET__
 ADAPTEROPTIONS=__ADAPTEROPTIONS__
+SKIP_RM=__SKIP_RM__
 EXITSUBX=__EXITSUBX__
 EXITASSEMBLY=__EXITASSEMBLY__
 EXITRM=__EXITRM__
@@ -338,12 +339,17 @@ RM_OUT=${TEMP_IN}.masked         # assembly.fa.masked
 TEMP_OUT=${TEMP_IN%%.*}.RM.fa    # assembly.RM.fa
 rm -rf RM_*     # remove old repeatmasker temporary directories
 if [[ ! -e "$STEP_OKFILE" ]]; then
-    RepeatMasker -pa ${THREADS} -xsmall ${TEMP_IN}
-    status_report ${?} RepeatMasker
-    if [[ ! -s ${RM_OUT} ]]; then   # happens when there are no masked sequences
-        mv -v "$TEMP_IN" "$TEMP_OUT"
-    else
-        mv -v ${RM_OUT} ${TEMP_OUT}
+    if [[ $SKIP_RM == 0 ]]; then    # run RM
+        RepeatMasker -pa ${THREADS} -xsmall ${TEMP_IN}
+        status_report ${?} RepeatMasker
+        if [[ ! -s ${RM_OUT} ]]; then   # happens when there are no masked sequences
+            mv -v "$TEMP_IN" "$TEMP_OUT"
+        else
+            mv -v ${RM_OUT} ${TEMP_OUT}
+        fi
+    else  # skip RM
+        echo "Skipping RepeatMasker step because --skip_repeatmasker in effect"
+        mv -v "$TEMP_IN" "$TEMP_OUT"  # move assembly.fa -> assembly.RM.fa    
     fi
 else
     echo "$SKIPMESSAGE"

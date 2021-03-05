@@ -16,6 +16,7 @@ GetOptions ($params, "aidfile|a=s",
                       "rm_default_index",   # remove default set of subtraction indices
                       "trim_left=i", "trim_right=i",
                       "assembler=s",  # clc_assembler or megahit
+                      "skip_repeatmasker",  # skip repeatmasker step
                       "collate=s",    # value is 'blast', 'virus' or 'both'
                       "extendcontigs",
                       "stats",        # TBD
@@ -35,6 +36,7 @@ usage() if (exists $params->{config} && ! -e $params->{config});
 usage() if (exists $params->{annotconf} && ! -e $params->{annotconf});
 
 # Set some defaults
+$params->{skip_repeatmasker} //= 0;
 $params->{exitsubx} //= 0;
 $params->{exitassembly} //= 0;
 $params->{exitrm} //= 0;
