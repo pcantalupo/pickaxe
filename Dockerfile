@@ -31,6 +31,7 @@ ENV PATH=$PATH:/miniconda/envs/pickaxe-1.0/bin:/samtools-1.2:/opt/pickaxe
 
 # Install pickaxe from github
 WORKDIR /opt
+ADD https://api.github.com/repos/pcantalupo/pickaxe/git/refs/heads/master version.json
 RUN git clone https://github.com/pcantalupo/pickaxe
 ENV PERL5LIB "$PERL5LIB:/opt/pickaxe/lib"
 
@@ -38,3 +39,5 @@ ENV PERL5LIB "$PERL5LIB:/opt/pickaxe/lib"
 RUN git clone https://github.com/pcantalupo/bkv
 ENV BOWTIE2_INDEXES /opt/bkv/bowtie2
 
+RUN echo 'alias l="ls -l"' >> ~/.bashrc
+RUN echo 'alias la="ls -la"' >> ~/.bashrc
