@@ -508,6 +508,7 @@ sub runjobs {
         s/__TRIMRIGHT__/$self->{params}{trim_right}/;
         s/__ASSEMBLER__/$self->{params}{assembler}/;
         s/__SKIP_RM__/$self->{params}{skip_repeatmasker}/;
+        s/__REMOTETAX__/$self->{params}{remotetax}/;
         
         my $vi = $self->virusindex; s/__VIRUSINDEX__/$vi/;
 

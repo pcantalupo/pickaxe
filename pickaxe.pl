@@ -17,6 +17,7 @@ GetOptions ($params, "aidfile|a=s",
                       "trim_left=i", "trim_right=i",
                       "assembler=s",  # clc_assembler or megahit
                       "skip_repeatmasker",  # skip repeatmasker step
+                      "remotetax",    # only get taxonomy information remotely from NCBI (annotater parameter)
                       "collate=s",    # value is 'blast', 'virus' or 'both'
                       "extendcontigs",
                       "stats",        # TBD
@@ -37,6 +38,7 @@ usage() if (exists $params->{annotconf} && ! -e $params->{annotconf});
 
 # Set some defaults
 $params->{skip_repeatmasker} //= 0;
+$params->{remotetax} //= 0;
 $params->{exitsubx} //= 0;
 $params->{exitassembly} //= 0;
 $params->{exitrm} //= 0;

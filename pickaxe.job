@@ -43,6 +43,7 @@ UNMAPPED_FQ=unmapped.fq
 ADAPTERSET=__ADAPTERSET__
 ADAPTEROPTIONS=__ADAPTEROPTIONS__
 SKIP_RM=__SKIP_RM__
+REMOTETAX=__REMOTETAX__
 EXITSUBX=__EXITSUBX__
 EXITASSEMBLY=__EXITASSEMBLY__
 EXITRM=__EXITRM__
@@ -451,7 +452,9 @@ if [[ ! -e "$STEP_OKFILE" ]]; then
             exit 100
         fi
     fi
-    Reann.pl -file ${TEMP_IN} -config ${ANNOTCONF} -num_threads ${THREADS} -evalue 1e-5 -tax
+    
+    if [[ $REMOTETAX == 1 ]]; then REMOTETAX="-remotetax"; else REMOTETAX= ; fi 
+    Reann.pl -file ${TEMP_IN} -config ${ANNOTCONF} -num_threads ${THREADS} -evalue 1e-5 -tax "$REMOTETAX"
 else
     echo "$SKIPMESSAGE"
 fi
