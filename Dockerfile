@@ -36,8 +36,10 @@ RUN git clone https://github.com/pcantalupo/pickaxe
 ENV PERL5LIB "$PERL5LIB:/opt/pickaxe/lib"
 
 # Install BKV refseqs
-RUN git clone https://github.com/pcantalupo/bkv
 ENV BOWTIE2_INDEXES /opt/bkv/bowtie2
+ENV BLASTDB /opt/bkv/blast
+RUN git clone https://github.com/pcantalupo/bkv
+
 
 RUN echo 'alias l="ls -l"' >> ~/.bashrc
 RUN echo 'alias la="ls -la"' >> ~/.bashrc
