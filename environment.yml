@@ -1,0 +1,15 @@
+# You can use this file to create a conda environment for this pipeline:
+#   conda env create -f environment.yml
+name: pickaxe-1.0
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+#  - bioconda::samtools=1.2   # doesn't work; need to compile manually in dockerfile
+  - bioconda::bowtie2=2.3.3
+  - bioconda::cutadapt=1.18
+  - bioconda::prinseq=0.20.4
+  - bioconda::repeatmasker=4.0.7
+  - bioconda::megahit=1.2.9
+  - bioconda::blast=2.7.1
