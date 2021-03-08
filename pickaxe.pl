@@ -161,9 +161,11 @@ Options:
                Pickaxe requires a Bowtie2 index to which it aligns unmapped
                reads for detection of known viruses in your dataset.  Must
                be an absolute path unless index is found in the path given
-               in the env variable BOWTIE2_INDEXES (default                
+               in the env variable BOWTIE2_INDEXES (default 'viral.1.1.genomic')
   --virusfasta VIRUSFASTA
                Absolute path to the fasta file used to generate the VINDEX
+               unless file is found in path of env variable BOWTIE2_INDEXES
+               (default 'viral.1.1.genomic.fna')
   --subx INDEX [--subx ...]
                Specify one or more Bowtie2 indexes to subtract your reads
                against.  Must be an absolute path unless index is found in
