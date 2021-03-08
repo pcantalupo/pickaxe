@@ -14,7 +14,8 @@ pickaxe.pl --stats SRR11074364_
 # NC_001538 remotely from NCBI (precluding need to configure local taxonomy
 # database). It skips the repeatmasker step since RM is difficult to
 # install; one reason is that it must be configured interactively
-pickaxe.pl --annotconf annotater.bkv.config --shell --assembler megahit --skip_repeatmasker --rm_default_index --virusindex /opt/bkv/bowtie2/NC_001538.1.fa --remotetax SRR11074364_
-pickaxe.pl --annotconf annotater.bkv.config --collate both --virusfasta /opt/bkv/NC_001538.1.fa SRR11074364_
-pickaxe.pl --extendcontigs SRR11074364_
-pickaxe.pl --stats SRR11074364_
+docker run -v $(pwd):$(pwd) -w $(pwd) pickaxe pickaxe.pl --annotconf annotater.bkv.config --shell --assembler megahit --skip_repeatmasker --rm_default_index --virusindex /opt/bkv/bowtie2/NC_001538.1.fa --remotetax SRR11074364_
+docker run -v $(pwd):$(pwd) -w $(pwd) pickaxe pickaxe.pl --annotconf annotater.bkv.config --collate both --virusfasta /opt/bkv/NC_001538.1.fa SRR11074364_
+docker run -v $(pwd):$(pwd) -w $(pwd) pickaxe pickaxe.pl --extendcontigs SRR11074364_
+docker run -v $(pwd):$(pwd) -w $(pwd) pickaxe pickaxe.pl --stats SRR11074364_
+
