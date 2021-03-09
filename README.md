@@ -30,7 +30,7 @@ The test commands run pickaxe with many default parameters and requires the
 following 1) viral.1.1.genomic bowtie2 index and the viral.1.1.genomic.fna
 file used to create the index, 2) viral.1.1.genomic blast database, and 3)
 the NCBI taxonomy database.  Note: add --shell parameter to run without
-submitting a SLURM sbatch job
+submitting a SLURM sbatch job. If you do not have these items installed, see the Docker section below.
 
 ```
 pickaxe.pl --rm_default_index SRR11074364_
@@ -76,4 +76,15 @@ found in the BAM file
 The `report_ViralRefSeq.tsv` file should show the following: number of alignments to BKV ~1500 (column 'aligns'), sequence coverage ~87% (column 'seqcov') and average depth ~22 (column 'avgdepth').
 
 The longest contig annotated by the BLAST pipeline as BKV should be ~1200bp (see `report_BLAST.tsv`).
+
+
+# Docker
+
+You can test pickaxe using the Docker image if you do not have any of the required databases or dependencies installed. First install Docker on your system and build the pickaxe image:
+
+`docker build -t pickaxe .`
+
+Then enter the `t` directory and following the instructions in the `README.txt`
+
+
 
