@@ -439,7 +439,7 @@ if [[ $? -eq 0 ]]; then
     module load rapsearch/2.24
     rapsearch 2>&1 | perl -ne 'if(/rapsearch (v\S+?):/) { print "rapsearch\t$1\n" }' >> $SVFILE
 fi
-module load blast+/2.7.1
+module load blast+/2.13.0
 blastn -version | perl -ne 'if (/blastn: (\S+)/) { print "blast+\t$1\n" }' >> $SVFILE
 TEMP_IN=${TEMP_OUT}
 if [[ ! -e "$STEP_OKFILE" ]]; then
