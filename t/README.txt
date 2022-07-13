@@ -1,8 +1,8 @@
-# Testing pickaxe using default parameters with the commands below requires
-# the following 1) viral.1.1.genomic bowtie2 index and the
-# viral.1.1.genomic.fna file used to create the index, 2) viral.1.1.genomic
-# blast database and 3) the NCBI taxonomy database.  Note: add --shell
-# parameter to run without submitting a SLURM sbatch job
+# Testing pickaxe using default parameters with the commands below requires the following
+# 1) ref_viruses_rep_genomes bowtie2 index and the ref_viruses_rep_genomes.fa file used to create the index. These files need to be in the folder specified by the environment variable 'BOWTIE2_INDEXES'
+# 2) ref_viruses_rep_genomes blast database
+# 3) the NCBI taxonomy database
+# Note: add --shell parameter to run without submitting a SLURM sbatch job
 pickaxe.pl --rm_default_index SRR11074364_
 pickaxe.pl --collate both SRR11074364_
 pickaxe.pl --extendcontigs SRR11074364_

@@ -71,45 +71,90 @@ sub new {
 
   # Virusindex (needed for pickaxejob)
   if (exists $self->{params}{extendcontigs} || exists $self->{params}{collate} || exists $self->{params}{stats}) {
-    print "Not checking for valid Bowtie2 index for virusindex since not running pickaxejob\n" if ($self->debug);
+    print "Not checking for valid Bowtie2 index for virus index since not running pickaxejob\n" if ($self->debug);
   }
   else {
-    print "Running pickaxe.job so need to check for Bowtie2 index for virusindex\n" if ($self->debug);
+    print "Running pickaxe.job so need to check for Bowtie2 index for virus index\n" if ($self->debug);
 
     my $bt2dir = "";
-    if (exists $ENV{'BOWTIE2_INDEXES'}) {  $bt2dir = $ENV{'BOWTIE2_INDEXES'} . '/';  }
-    $self->{params}{virusindex} //= $bt2dir . "viral.1.1.genomic";
-    my $vi = $self->{params}{virusindex};
-    
-    print "Before: virusindex is $vi\n" if ($self->debug);
-    if ($vi =~ /^\//) {    # the virus index is a full path already
-      print "   no action since full path already\n" if ($self->debug);
-    }
-    else {
-      $vi = $self->{wd} . "/" . $vi;
-      print "   adding working directory path to virusindex\n" if ($self->debug);
-    
-    }
-    print "After: virusindex is $vi\n" if ($self->debug);
+    if (exists $ENV{'BOWTIE2_INDEXES'} && -e $ENV{'BOWTIE2_INDEXES'}) {  $bt2dir = $ENV{'BOWTIE2_INDEXES'} . '/';  }
 
-    $self->{params}{virusindex} = $vi;
-    
-    my $indxfile  = $vi . ".1.bt2";
-    print "indxfile is $indxfile\n" if ($self->debug);
-    my $indxfileL = $vi . ".1.bt2l";  # large bowtie2 index
-    if ( ! -e $indxfile && ! -e $indxfileL ) {
-      croak "Bowtie2 index '$vi' was not found\nEither use option '--virusindex BOWTIE2INDEX' or specify in pickaxe.config configuration file\n\n";
+    my $vi_error_msg = "Please supply one with '--virusindex BOWTIE2INDEX' option.";
+    if ( !defined($self->{params}{virusindex}) ) {    # VIRUSINDEX not defined
+      print "Option --virusindex not defined...looking for default index\n" if ($self->debug);
+      if ($bt2dir eq "") {
+        croak "Error: Bowtie2 virus index was not provided and default index not found. $vi_error_msg\n" # error1
+      }
+      else {
+        print "Checking for default virus index in $bt2dir\n" if ($self->debug);
+        $self->{params}{virusindex} = $bt2dir . "ref_viruses_rep_genomes";
+        if ( !$self->exists_bowtie2_index ) {
+          croak "Error: Bowtie2 virus index was not provided and default index not found (even in $bt2dir). $vi_error_msg\n"; # error2
+        }
+      }
     }
+    else {   # VIRUSINDEX defined
+      my $vi = $self->{params}{virusindex};
+      print "Option --virusindex defined as $vi\n" if ($self->debug);
+      if ( !$self->exists_bowtie2_index ) {
+        print "Bowtie2 virus index ($vi) was not found\n" if ($self->debug);
+        if ($bt2dir eq "") {          
+          croak "Error: Bowtie2 virus index ($vi) was not found. $vi_error_msg\n"; # error3
+        }
+        else {
+          print "Checking for virus index in $bt2dir\n" if ($self->debug);
+          $self->{params}{virusindex} = $bt2dir . $vi;
+          if ( !$self->exists_bowtie2_index ) {
+            croak "Error: Bowtie2 virus index ($vi) was not found (even in $bt2dir). $vi_error_msg\n" # error4
+          }
+        }
+      }
+    }
+    print "\nFound virus index here " . $self->{params}{virusindex} . "\n" if ($self->debug);
   }
 
   # Virus references sequences (needed for collate)
+  my $vfasta_error_msg = "Please supply one with '--virusfasta FASTA' option.";
   if (exists $self->{params}{collate}) {
     print "Parsing virus reference sequences since 'collate' is in effect\n" if ($self->debug);
     my $bt2dir = "";
-    if (exists $ENV{'BOWTIE2_INDEXES'}) {  $bt2dir = $ENV{'BOWTIE2_INDEXES'} . '/';  }
-    $self->{params}{virusfasta} //= $bt2dir . "viral.1.1.genomic.fna";  # default is viral.1.1.genomic.fna or $BOWTIE2_INDEXES/viral.1.1.genomic.fna
+    if (exists $ENV{'BOWTIE2_INDEXES'} && -e $ENV{'BOWTIE2_INDEXES'}) {  $bt2dir = $ENV{'BOWTIE2_INDEXES'} . '/';  }
+
+    if ( !defined($self->{params}{virusfasta}) ) {    # not defined SELFFA
+      print "Option --virusfasta not defined...looking for default fasta\n" if ($self->debug);
+      if ($bt2dir eq "") {
+        croak "Error: Virus fasta was not provided and default fasta not found. $vfasta_error_msg\n" # error1
+      }
+      else {
+        print "Checking for default virus fasta in $bt2dir\n" if ($self->debug);
+        $self->{params}{virusfasta} = $bt2dir . "ref_viruses_rep_genomes.fa";
+        if ( ! -e $self->{params}{virusfasta} ) {
+          croak "Error: Virus fasta was not provided and default fasta not found (even in $bt2dir). $vfasta_error_msg\n"; # error2
+        }
+      }
+    }
+    else {   # defined SELFFA
+      my $vfasta = $self->{params}{virusfasta};
+      print "Option --virusfasta defined as $vfasta\n" if ($self->debug);
+      if ( ! -e $vfasta ) {
+        print "Virus fasta ($vfasta) was not found\n" if ($self->debug);
+        if ($bt2dir eq "") {          
+          croak "Error: Virus fasta ($vfasta) was not found. $vfasta_error_msg\n"; # error3
+        }
+        else {
+          print "Checking for virus fasta in $bt2dir\n" if ($self->debug);
+          $self->{params}{virusfasta} = $bt2dir . $vfasta;
+          if ( ! -e $self->{params}{virusfasta} ) {
+            croak "Error: Virus fasta ($vfasta) was not found (even in $bt2dir). $vfasta_error_msg\n";
+          }
+        }
+      }
+    }
+    print "\nFound virus fasta here " . $self->{params}{virusfasta} . "\n" if ($self->debug);
   }
-   
+
+exit 1;
+
   # assembler
   $self->{params}{assembler} //= $ASSEMBLER;
   my $assem = $self->{params}{assembler};
@@ -148,6 +193,17 @@ sub AUTOLOAD {
     $self->{params}{$method} = $value;
   }
   return $self->{params}{$method};
+}
+
+sub exists_bowtie2_index() {
+  my ($self) = @_;
+  my $indxfile  = $self->{params}{virusindex} . ".1.bt2";
+  print "Variable 'indxfile' = $indxfile\n" if ($self->debug);
+  my $indxfileL = $self->{params}{virusindex} . ".1.bt2l";  # large bowtie2 index
+  if ( -e $indxfile || -e $indxfileL ) {
+    return 1;
+  }
+  return;
 }
 
 
