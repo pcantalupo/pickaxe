@@ -5,7 +5,7 @@ use Carp;
 use POSIX;
 use File::Basename;
 
-our @indx = qw/NT_rRNA.all Homo_sapiens.GRCh37.74.ncrna Homo_sapiens.GRCh37.74.cdna.all
+our @indx = qw/NT_rRNA Homo_sapiens.GRCh37.74.ncrna
                        refseq.human.rna              ucsc_genes_hg38
                        hg19                          hg38
                        human_genomic.00              human_genomic.01
@@ -211,7 +211,7 @@ sub unmapped {
   $unmapped .= ".fq";
  
   # extract unmapped from SAM file
-  my $cmd = "sam2fq.pl -f 4 $self->{sam} > $unmapped";
+  my $cmd = "samtools fastq -f 4 $self->{sam} > $unmapped";
   #print "$i: $cmd\n";
   `$cmd`; 
   

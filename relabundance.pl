@@ -59,7 +59,7 @@ my $format_option = "";   # default to Fastq option for Bowtie2
 if ($format eq 'fasta') {
   $format_option = "-f";
 }
-my $cmd = "bowtie2 -p $cpus $format_option -U $reads -x $prefix | samtools view -Sb - | samtools sort - $reads";
+my $cmd = "bowtie2 -p $cpus $format_option -U $reads -x $prefix | samtools view -Sb - | samtools sort - -o $bamout";
 #print $cmd, $/;
 `$cmd`;
 my @refaligns = bam2refnumaligns("$bamout");

@@ -153,8 +153,6 @@ sub new {
     print "\nFound virus fasta here " . $self->{params}{virusfasta} . "\n" if ($self->debug);
   }
 
-exit 1;
-
   # assembler
   $self->{params}{assembler} //= $ASSEMBLER;
   my $assem = $self->{params}{assembler};
