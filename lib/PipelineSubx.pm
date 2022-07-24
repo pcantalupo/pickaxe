@@ -5,17 +5,14 @@ use Carp;
 use POSIX;
 use File::Basename;
 
-our @indx = qw/NT_rRNA Homo_sapiens.GRCh37.74.ncrna
-                       refseq.human.rna              ucsc_genes_hg38
-                       hg19                          hg38
-                       human_genomic.00              human_genomic.01
-                       human_genomic.02              human_genomic.03
-                       human_genomic.04              human_genomic.05
-                       human_genomic.06              human_genomic.07
-                       human_genomic.08              human_genomic.09
-                       human_genomic.10              human_genomic.11
-                       human_genomic.12
-                       /;
+# GCF_000001405.39_top_level is hg38
+our @indx = qw/NT_rRNA
+              Homo_sapiens.GRCh37.74.ncrna
+              refseq.human.rna
+              ucsc_genes_hg38
+              GCF_000001405.39_top_level
+              /;
+
 sub new {
   my $class = shift;
   my $self = shift;
