@@ -13,4 +13,4 @@ dependencies:
   - bioconda::repeatmasker=4.0.7
   - bioconda::megahit=1.2.9
   - bioconda::blast=2.12.0
-  
+  - bioconda::diamond=2.0.15
