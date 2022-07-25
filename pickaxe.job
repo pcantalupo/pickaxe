@@ -433,14 +433,20 @@ STEP="annotater"
 STEP_OKFILE="$OKFILEDIR""$STEP_NUM"_"$STEP".OK
 date_report ${STEP_NUM} "Annotating "$(grep -c '^>' "$TEMP_OUT")" sequences"
 module purge
+module load blast+/2.13.0
+blastn -version | perl -ne 'if (/blastn: (\S+)/) { print "blast+\t$1\n" }' >> $SVFILE
 grep -q rapsearch $ANNOTCONF   # check if rapsearch is needed
 if [[ $? -eq 0 ]]; then
     echo "Loading module rapsearch/2.24"
     module load rapsearch/2.24
     rapsearch 2>&1 | perl -ne 'if(/rapsearch (v\S+?):/) { print "rapsearch\t$1\n" }' >> $SVFILE
 fi
-module load blast+/2.13.0
-blastn -version | perl -ne 'if (/blastn: (\S+)/) { print "blast+\t$1\n" }' >> $SVFILE
+grep -q diamond $ANNOTCONF   # check if diamond is needed
+if [[ $? -eq 0 ]]; then
+    echo "Loading module diamond/2.0.15"
+    module load diamond/2.0.15
+    diamond version | perl -pe 's/ version /\t/' >> $SVFILE
+fi
 TEMP_IN=${TEMP_OUT}
 if [[ ! -e "$STEP_OKFILE" ]]; then
     if [[ ! -e "$TEMP_IN" ]]; then    # check for input sequence file
