@@ -6,10 +6,11 @@ channels:
   - bioconda
   - defaults
 dependencies:
-#  - bioconda::samtools=1.2   # doesn't work; need to compile manually in dockerfile
+  - bioconda::samtools=1.14
   - bioconda::bowtie2=2.3.3
   - bioconda::cutadapt=1.18
   - bioconda::prinseq=0.20.4
   - bioconda::repeatmasker=4.0.7
   - bioconda::megahit=1.2.9
-  - bioconda::blast=2.7.1
+  - bioconda::blast=2.12.0
+  
