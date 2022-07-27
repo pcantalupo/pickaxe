@@ -2,9 +2,6 @@ FROM virushunter/annotater
 
 WORKDIR /
 
-# Install Text::Soundex for RepeatMasker
-RUN cpanm Text::Soundex
-
 # Install Conda
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8
 ENV PATH=/miniconda/condabin:$PATH
@@ -17,10 +14,10 @@ COPY environment.yml /
 RUN conda env create --quiet -f /environment.yml && conda clean -a
 
 # Dump the details of the installed packages to a file for posterity
-RUN conda env export --name pickaxe-1.0 > pickaxe-1.0.yml
+RUN conda env export --name pickaxe > pickaxe.yml
 
 # Add conda installation dir to PATH (instead of doing 'conda activate')
-ENV PATH=$PATH:/miniconda/envs/pickaxe-1.0/bin:/opt/pickaxe
+ENV PATH=$PATH:/miniconda/envs/pickaxe/bin:/opt/pickaxe
 
 # Install pickaxe from github
 WORKDIR /opt

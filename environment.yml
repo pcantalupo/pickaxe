@@ -1,6 +1,6 @@
 # You can use this file to create a conda environment for this pipeline:
 #   conda env create -f environment.yml
-name: pickaxe-1.0
+name: pickaxe
 channels:
   - conda-forge
   - bioconda
@@ -10,6 +10,6 @@ dependencies:
   - bioconda::bowtie2=2.3.3
   - bioconda::cutadapt=1.18
   - bioconda::prinseq=0.20.4
-  - bioconda::repeatmasker=4.0.7
+#  - bioconda::repeatmasker=4.0.7
   - bioconda::megahit=1.2.9
   - bioconda::diamond=2.0.15
