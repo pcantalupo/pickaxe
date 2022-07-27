@@ -185,16 +185,17 @@ Options:
 Dependendies - listed version may not be absolutely required.  Other
 versions were not tested
 
-  samtools	1.2
+  samtools	1.14
   bowtie2	2.3.3
   cutadapt	1.18
   PRINSEQ-lite	0.20.4
   RepeatMasker	open-4.0.7
   clc_assembler	5.1.1.184548-201811011136 (or megahit 1.2.9)
-  blast+	2.7.1+
+  blast+	2.13.0+
 
 Optional
 
+  diamond       2.0.15
   rapsearch	v2.24
   sra-toolkit	2.9.2
 
