@@ -28,8 +28,8 @@ This example uses 5000 reads from `SRR11074364` which is RNA-Seq of Human
 RPTE cells infected by the virus BKV.  Switch to the `t` directory and run
 the following.  Depending on your computer, this will take about 1 hour. 
 The test commands run pickaxe with many default parameters and requires the
-following 1) viral.1.1.genomic bowtie2 index and the viral.1.1.genomic.fna
-file used to create the index, 2) viral.1.1.genomic blast database, and 3)
+following 1) ref_viruses_rep_genomes bowtie2 index and the ref_viruses_rep_genomes.fa
+file used to create the index, 2) ref_viruses_rep_genomes blast database, and 3)
 the NCBI taxonomy database.  Note: add --shell parameter to run without
 submitting a SLURM sbatch job. If you do not have these items installed, see the Docker section below.
 
