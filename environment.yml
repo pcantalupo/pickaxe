@@ -7,9 +7,11 @@ channels:
   - defaults
 dependencies:
   - bioconda::samtools=1.14
-  - bioconda::bowtie2=2.3.3
-  - bioconda::cutadapt=1.18
+  - bioconda::bowtie2=2.4.5
+  - bioconda::cutadapt=4.1
   - bioconda::prinseq=0.20.4
-#  - bioconda::repeatmasker=4.0.7
+  - bioconda::repeatmasker=4.1.2
   - bioconda::megahit=1.2.9
   - bioconda::diamond=2.0.15
+  - bioconda::perl-libwww-perl
+  - bioconda::perl-xml-simple
