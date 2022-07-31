@@ -28,7 +28,7 @@ export BOWTIE2_INDEXES=$(pwd -P)
 cd ..
 ```
 
-Afterwards, run the docker command below to align the reads against the 3 virus sequences, assemble contigs, and Blast the contigs against the NCBI viral refseq Blast database. If you do not have a local NCBI taxonomy database, add the `--remotetax` parameter which will obtain taxonomy info from NCBI. The RepeatMasker (RM) step is skipped (`--skip_repeatmasker`) since RM is not installed in the docker image. This is because RM is difficult to install; one reason is that it must be configured interactively
+Afterwards, run the docker command below to align the reads against the 3 virus sequences, assemble contigs, and Blast the contigs against the NCBI viral refseq Blast database. If you do not have a local NCBI taxonomy database, add the `--remotetax` parameter which will obtain taxonomy info from NCBI.
 
 ```
 docker run -w $(pwd) \
@@ -39,7 +39,7 @@ docker run -w $(pwd) \
 -e NODESDMP=/PATH/TO/TAXONOMYDIR/nodes.dmp \
 -e BLASTDB="$BLASTDB" \
 -e BOWTIE2_INDEXES="$BOWTIE2_INDEXES" \
-pickaxe pickaxe.pl --shell --assembler megahit --skip_repeatmasker --rm_default_index SRR11074364_
+pickaxe pickaxe.pl --shell --assembler megahit --rm_default_index SRR11074364_
 ```
 
 Then run the following docker command to generate the BLAST and ViralRefSeq reports:
