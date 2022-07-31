@@ -303,6 +303,9 @@ sub _collate_blast {
 
     foreach my $contig (keys %{$rpthash->{$aid}}) {
       (my $aid_prefix = $aid) =~ s/\.pickaxe//;
+      if (length(${$rpthash->{$aid}{$contig}}[0]) >= 32767) {       # Maximum Excel cell length
+        ${$rpthash->{$aid}{$contig}}[0] = "Sequence length greater than 32767";
+      }
       print $out join("\t", $aid_prefix, $contig, @{$rpthash->{$aid}{$contig} }), "\n";
     }
   }
