@@ -12,9 +12,9 @@
 set -o pipefail
 
 module purge
-module load cutadapt/1.18
+module load cutadapt/2.10
 module load prinseq/0.20.4
-module load bowtie2/2.3.3 samtools/1.14
+module load gcc/8.2.0 bowtie2/2.3.4.2 samtools/1.14
 # Other modules are loaded when needed because there were conflicts with modules
 
 # get software versions
@@ -278,7 +278,6 @@ if [[ ! -e "$STEP_OKFILE" ]]; then
         fi
     elif [[ $ASSEMBLER == "megahit" ]]; then
 #    elif hash megahit 2>/dev/null; then
-        module unload cutadapt/1.18
         module load megahit/1.2.9
         megahit -v | tr ' ' '\t' >> $SVFILE
         echo "Running megahit Version: "$(megahit -v)
