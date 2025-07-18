@@ -22,7 +22,7 @@ ENV PATH=/opt/conda/envs/pickaxe/bin:$PATH
 WORKDIR /opt
 ADD https://api.github.com/repos/pcantalupo/pickaxe/git/refs/heads/master version.pickaxe.json
 RUN git clone https://github.com/pcantalupo/pickaxe
-ENV PATH=$PATH:/opt/pickaxe
+ENV PATH=$PATH:/opt/pickaxe:/opt/pickaxe/bin
 ENV PERL5LIB="$PERL5LIB:/opt/pickaxe/lib"
 
 RUN echo 'alias l="ls -l"' >> ~/.bashrc
